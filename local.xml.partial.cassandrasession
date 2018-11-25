@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<config>
+    <global>
+        <session_save>db</session_save>
+        <cassandra_session>
+            <host>127.0.0.1</host>
+        </cassandra_session>
+    </global>
+</config>

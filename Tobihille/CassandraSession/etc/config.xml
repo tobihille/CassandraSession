@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<config>
+    <modules>
+        <Tobihille_CassandraSession>
+            <version>0.1.0</version>
+        </Tobihille_CassandraSession>
+    </modules>
+    <global>
+        <models>
+            <tobihille_cassandrasession>
+                <class>Tobihille_CassandraSession_Model</class>
+            </tobihille_cassandrasession>
+            <core_mysql4>
+                <rewrite>
+                    <session>Tobihille_CassandraSession_Model_Session</session>
+                </rewrite>
+            </core_mysql4>
+        </models>
+    </global>
+</config>
