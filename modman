@@ -1,2 +1,2 @@
-app/code/community/Tobihille/CassandraSession Tobihille/CassandraSession
-app/etc/modules/Tobihille_CassandraSession.xml Tobihille_CassandraSession.xml
+Tobihille/CassandraSession app/code/community/Tobihille/CassandraSession
+Tobihille_CassandraSession.xml app/etc/modules/Tobihille_CassandraSession.xml
