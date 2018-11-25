@@ -10,9 +10,6 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
     const DEFAULT_BREAK_AFTER  = 30;       /* Try to break the lock after this many seconds */
     const FAIL_AFTER         = 15;       /* Try to break lock for at most this many seconds */
 
-    /* Bots get shorter session lifetimes */
-    const BOT_REGEX          = '/^alexa|^blitz\.io|bot|^browsermob|crawl|^curl|^facebookexternalhit|feed|google web preview|^ia_archiver|indexer|^java|jakarta|^libwww-perl|^load impact|^magespeedtest|monitor|^Mozilla$|nagios|^\.net|^pinterest|postrank|slurp|spider|uptime|^wget|yandex/i';
-
     /** @var bool $_useThis */
     protected $_useThis;
 
@@ -34,8 +31,10 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
     /** @var int $_breakAfter */
     protected $_breakAfter;
 
+    /** @var int $_sessionLifetime */
     protected $_sessionLifetime = 86400;
 
+    /** @var array $_configArray */
     protected $_configArray = [];
 
     public function __construct()
@@ -133,9 +132,9 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
         $sessionId = self::SESSION_PREFIX.$sessId;
         $sessionId = str_replace('\'', '\'\'', $sessionId);
 
-        // Get lock on session. Increment the "locks" field in the counter table and if the new value is 1, we have the lock.
-        // If the new value is exactly BREAK_AFTER then we also have the lock and have broken the
-        // lock for the previous process.
+        // Get lock on session. If the count of locks is "0" everything is fine
+        // If the new value is exactly BREAK_AFTER then we also have the lock and have waited long enough for the
+        // previous previous process to finish.
         $tries = 0;
         while(1) {
             $locks = 0;
@@ -241,6 +240,7 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
         }
 
         //since TTL is set everywhere nothing should be necessary here
+        //TODO: maybe it's a good idea to clear table session_locks from sessionkeys that are not existent in session
         return TRUE;
     }
 
