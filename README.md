@@ -13,4 +13,4 @@
 Cm_RedisSession is automatically deactivated in app/etc/modules/Tobihille_CassandraSession.xml to avoid rewrite conflicts
 
 # License
-will follow in a moment :-)
+* MIT
