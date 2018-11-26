@@ -14,5 +14,6 @@
             <active>false</active>
             <codePool>local</codePool>
         </Cm_RedisSession>
+
     </modules>
 </config>

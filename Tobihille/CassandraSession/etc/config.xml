@@ -17,4 +17,20 @@
             </core_mysql4>
         </models>
     </global>
+    <crontab>
+        <jobs>
+            <clear_stray_locks>
+                <schedule>5 12 * * *</schedule>
+                <run>
+                    <model>tobihille_cassandrasession/observer::clear_stray_locks</model>
+                </run>
+            </clear_stray_locks>
+            <clear_tombstones>
+                <schedule>5 13 * * *</schedule>
+                <run>
+                    <model>tobihille_cassandrasession/observer::clear_tombstones</model>
+                </run>
+            </clear_tombstones>
+        </jobs>
+    </crontab>
 </config>
