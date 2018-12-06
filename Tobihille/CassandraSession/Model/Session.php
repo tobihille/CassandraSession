@@ -140,7 +140,9 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
             $locks = 0;
             try {
                 /** @var \Cassandra\Response\Result $result */
-                $result = $this->_cassandra->querySync("select locks from {$this->_dbName}.session_locks where sessionkey = '$sessionId'");
+                $result = $this->_cassandra->querySync(
+                    "select locks from {$this->_dbName}.session_locks where sessionkey = ?",
+                    [new Cassandra\Type\Varchar($sessionId)]);
                 /** @var int $locks */
                 $locks = $result->fetchOne();
                 if (is_null($locks)) { //new session
@@ -156,16 +158,23 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
             if ($locks <= 0 || $locks == $this->_breakAfter) {
                 try {
                     //set lock
-                    $this->_cassandra->queryAsync("update {$this->_dbName}.session_locks set locks = locks + 1 where sessionkey = '$sessionId'");
+                    $this->_cassandra->queryAsync(
+                        "update {$this->_dbName}.session_locks set locks = locks + 1 where sessionkey = ?",
+                        [new Cassandra\Type\Varchar($sessionId)]);
                     //update TTL
-                    $this->_cassandra->queryAsync("update {$this->_dbName}.session set sessionkey = '$sessionId' where sessionkey = '$sessionId' using TTL {$this->_sessionLifetime}");
+                    $this->_cassandra->queryAsync(
+                        "update {$this->_dbName}.session set sessionkey = ? where sessionkey = ? using TTL {$this->_sessionLifetime}",
+                        [new Cassandra\Type\Varchar($sessionId), new Cassandra\Type\Varchar($sessionId)]);
 
-                    $result = $this->_cassandra->querySync("select sessioncontent from {$this->_dbName}.session where sessionkey = '$sessionId'");
+                    $result = $this->_cassandra->querySync(
+                        "select sessioncontent from {$this->_dbName}.session where sessionkey = ?",
+                        [new Cassandra\Type\Varchar($sessionId)]);
+
                     $content = $result->fetchOne();
                     if (is_null($content)) { //new session
                         $content = '';
                     }
-                    return $content;
+                    return $this->_decodeData($content);
                 } catch (\Cassandra\Exception $e) {
                     $this->_log("querying session data failed: {$e->getMessage()} ({$e->getCode()})");
                     Mage::logException($e);
@@ -199,10 +208,16 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
         $sessionId = str_replace('\'', '\'\'', $sessionId);
         $sessionData = str_replace('\'', '\'\'', $sessData);
 
+        $sessionData = $this->_encodeData($sessionData);
+
         // If we lost our lock on the session we should not overwrite it.
         // It should always exist since the read callback created it.
-        $this->_cassandra->queryAsync("update {$this->_dbName}.session using TTL {$this->_sessionLifetime} set sessioncontent = '$sessionData' where sessionkey = '$sessionId'");
-        $this->_cassandra->queryAsync("update {$this->_dbName}.session_locks set locks = locks - 1 where sessionkey = '$sessionId'");
+        $foo = $this->_cassandra->queryAsync(
+            "update {$this->_dbName}.session using TTL {$this->_sessionLifetime} set sessioncontent = ? where sessionkey = ?",
+            [new Cassandra\Type\Blob($sessionData), new Cassandra\Type\Varchar($sessionId)]);
+        $bar = $this->_cassandra->queryAsync(
+            "update {$this->_dbName}.session_locks set locks = locks - 1 where sessionkey = ?",
+            [new Cassandra\Type\Varchar($sessionId)]);
         return TRUE;
     }
 
@@ -221,8 +236,12 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
         $sessionId = self::SESSION_PREFIX.$sessId;
         $sessionId = str_replace('\'', '\'\'', $sessionId);
 
-        $this->_cassandra->queryAsync("delete from {$this->_dbName}.session where sessionkey = '$sessionId'");
-        $this->_cassandra->queryAsync("delete from {$this->_dbName}.session_locks where sessionkey = '$sessionId'");
+        $this->_cassandra->querySync(
+            "delete from {$this->_dbName}.session where sessionkey = ?",
+            [new Cassandra\Type\Varchar($sessionId)]);
+        $this->_cassandra->queryAsync(
+            "delete from {$this->_dbName}.session_locks where sessionkey = ?",
+            [new Cassandra\Type\Varchar($sessionId)]);
 
         return TRUE;
     }
@@ -250,5 +269,23 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
     public function _getPid()
     {
         return gethostname().'|'.getmypid();
+    }
+
+    public function _decodeData(String $data)
+    {
+        $uncompressedData = gzuncompress($data);
+        if ($uncompressedData !== false) {
+            return $uncompressedData;
+        }
+        return $data;
+    }
+
+    public function _encodeData(String $data) {
+        $compressedData = gzcompress($data, 9);
+        if ($compressedData !== false) {
+            return $compressedData;
+        }
+
+        return $data;
     }
 }
