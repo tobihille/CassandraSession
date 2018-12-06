@@ -212,10 +212,10 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
 
         // If we lost our lock on the session we should not overwrite it.
         // It should always exist since the read callback created it.
-        $foo = $this->_cassandra->queryAsync(
+        $this->_cassandra->queryAsync(
             "update {$this->_dbName}.session using TTL {$this->_sessionLifetime} set sessioncontent = ? where sessionkey = ?",
             [new Cassandra\Type\Blob($sessionData), new Cassandra\Type\Varchar($sessionId)]);
-        $bar = $this->_cassandra->queryAsync(
+        $this->_cassandra->queryAsync(
             "update {$this->_dbName}.session_locks set locks = locks - 1 where sessionkey = ?",
             [new Cassandra\Type\Varchar($sessionId)]);
         return TRUE;
