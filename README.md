@@ -2,6 +2,7 @@
 * Cassandra-Library for PHP: https://github.com/duoshuo/php-cassandra
 * Apache Cassandra (http://cassandra.apache.org/)
 * Magento 1 (obviously)
+* nodetool must be in current path, otherwise the cron which removes tombstones will not work
 
 # How To Use
 * Install Cassandra (follow the Instructions on http://cassandra.apache.org/download or google it for your OS. Works on WSL too)
