@@ -2,6 +2,8 @@
 
 class Tobihille_CassandraSession_Model_Observer {
 
+    protected $_binPath = '';
+
     protected function getCassandraConnection($config) : Cassandra\Connection
     {
         // Database config
@@ -13,6 +15,9 @@ class Tobihille_CassandraSession_Model_Observer {
         $timeout =                 ((int) $config->descend('timeout') ?: '30');
         $persistentConnection = ((string) $config->descend('persistentConnection') ?: '');
         $dbName =               ((string) $config->descend('db') ?: 'sessions');
+        $this->_binPath       = ((string) $config->descend('cassandra_bin') ?: '');
+        //if defined, strip last / or \ from path
+        $this->_binPath = rtrim($this->_binPath, DS);
 
         $configArray = [
             // advanced way, using Connection\Stream, persistent connection
@@ -37,7 +42,8 @@ class Tobihille_CassandraSession_Model_Observer {
         return $cassandra;
     }
 
-    public function clear_stray_locks() {
+    public function clear_stray_locks() : void
+    {
         $config = Mage::getConfig()->getNode('global/cassandra_session');
         if (!$config) {
             return;
@@ -63,7 +69,8 @@ class Tobihille_CassandraSession_Model_Observer {
         $cassandra->disconnect();
     }
 
-    public function clear_tombstones() {
+    public function clear_tombstones() : void
+    {
         $config = Mage::getConfig()->getNode('global/cassandra_session');
         if (!$config) {
             return;
@@ -78,11 +85,18 @@ class Tobihille_CassandraSession_Model_Observer {
             return; //no nodetool garbagecollect present
         }
 
+        $command = 'nodetool garbagecollect';
         $commandOut = [];
         $returnValue = 0;
-        exec('which nodetool', $commandOut, $returnValue);
-        if ($returnValue === 0 && is_array($commandOut) && !empty($commandOut[0])) {
-            exec('nodetool garbagecollect');
+
+        if ($this->_binPath === '') {
+            exec('which nodetool', $commandOut, $returnValue);
+            if ($returnValue !== 0 || !is_array($commandOut) || empty($commandOut[0])) {
+                $command = '';
+            }
+        }
+        if ($command !== '') {
+            exec($this->_binPath . DS . $command, $commandOut, $returnValue);
         }
 
         $cassandra->flush();

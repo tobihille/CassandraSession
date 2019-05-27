@@ -8,10 +8,11 @@
             <username></username>
             <password></password>
             <connect_timeout>5</connect_timeout>
-            <timeout>30</timeout>
-            <persistentConnection></persistentConnection>
-            <db>sessions</db>
-            <breakafter>30</breakafter>
+            <timeout>30</timeout>  <!-- amount of seconds to wait before try to gain session lock -->
+            <persistentConnection></persistentConnection> <!-- ??? i don't know anymore what this does :-( -->
+            <db>sessions</db> <!-- database name. if you use the same cassandra instance for multiple shops change this value -->
+            <breakafter>30</breakafter>  <!-- amount of times to wait for session lock -->
+            <cassandra_bin><![CDATA[]]></cassandra_bin> <!-- if empty a global config is assumed; please note that only local commands are supported, if your cassandra is installed elsewhere leave this empty to prevent errors and set up a cron manually -->
         </cassandra_session>
     </global>
 </config>

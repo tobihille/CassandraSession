@@ -5,10 +5,10 @@ require_once Mage::getBaseDir('lib').DS.'DuoShuo'.DS.'ApacheCassandra'.DS.'php-c
 
 class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Session
 {
-    const SESSION_PREFIX       = 'sess_';
-    const LOG_FILE             = 'cassandra_session.log';
-    const DEFAULT_BREAK_AFTER  = 30;       /* Try to break the lock after this many seconds */
-    const FAIL_AFTER         = 15;       /* Try to break lock for at most this many seconds */
+    protected const SESSION_PREFIX       = 'sess_';
+    protected const LOG_FILE             = 'cassandra_session.log';
+    protected const DEFAULT_BREAK_AFTER  = 30;       /* Try to break the lock after this many seconds */
+    protected const FAIL_AFTER           = 15;       /* Try to break lock for at most this many seconds */
 
     /** @var bool $_useThis */
     protected $_useThis;
@@ -86,7 +86,7 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
      * @param $msg
      * @param $level
      */
-    protected function _log($msg, $level = Zend_Log::DEBUG)
+    protected function _log($msg, $level = Zend_Log::DEBUG): void
     {
         Mage::log("{$this->_getPid()}: $msg", $level, self::LOG_FILE);
     }
@@ -123,7 +123,7 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
      * @param string $sessId
      * @return string
      */
-    public function read($sessId)
+    public function read($sessId) : string
     {
         if (!$this->_useThis) {
             return parent::read($sessId);
@@ -145,7 +145,7 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
                     [new Cassandra\Type\Varchar($sessionId)]);
                 /** @var int $locks */
                 $locks = $result->fetchOne();
-                if (is_null($locks)) { //new session
+                if ($locks === null) { //new session
                     $locks = 0;
                 }
             } catch (\Cassandra\Exception $e) {
@@ -171,7 +171,7 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
                         [new Cassandra\Type\Varchar($sessionId)]);
 
                     $content = $result->fetchOne();
-                    if (is_null($content)) { //new session
+                    if ($content === null) { //new session
                         $content = '';
                     }
                     return $this->_decodeData($content);
@@ -198,7 +198,7 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
      * @param string $sessData
      * @return boolean
      */
-    public function write($sessId, $sessData)
+    public function write($sessId, $sessData) : bool
     {
         if (!$this->_useThis) {
             return parent::write($sessId, $sessData);
@@ -227,7 +227,7 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
      * @param string $sessId
      * @return boolean
      */
-    public function destroy($sessId)
+    public function destroy($sessId) : bool
     {
         if (!$this->_useThis) {
             return parent::destroy($sessId);
@@ -252,7 +252,7 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
      * @param int $sessMaxLifeTime ignored
      * @return boolean
      */
-    public function gc($sessMaxLifeTime)
+    public function gc($sessMaxLifeTime) : bool
     {
         if (!$this->_useThis) {
             return parent::gc($sessMaxLifeTime);
@@ -266,12 +266,12 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
     /**
      * @return string
      */
-    public function _getPid()
+    public function _getPid() : string
     {
         return gethostname().'|'.getmypid();
     }
 
-    public function _decodeData(String $data)
+    public function _decodeData(String $data) : string
     {
         $uncompressedData = gzuncompress($data);
         if ($uncompressedData !== false) {
