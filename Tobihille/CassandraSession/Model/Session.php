@@ -37,6 +37,9 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
     /** @var array $_configArray */
     protected $_configArray = [];
 
+    /** @var bool $_compress */
+    protected $_compress = true;
+
     public function __construct()
     {
         $this->_sessionLifetime = $this->getLifeTime();
@@ -59,6 +62,8 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
         $persistentConnection = ((string) $config->descend('persistentConnection') ?: '');
         $this->_dbName =        ((string) $config->descend('db') ?: 'sessions');
         $this->_breakAfter =    ((string) $config->descend('breakafter') ?: self::DEFAULT_BREAK_AFTER);
+        $compress = strtolower( (string) $config->descend('compress') ?: 'on' );
+        $this->_compress = ( $compress === 'true' || $compress === '1' || $compress === 'on' || $compress === '');
 
         $this->_configArray = [
             // advanced way, using Connection\Stream, persistent connection
@@ -130,7 +135,6 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
         }
 
         $sessionId = self::SESSION_PREFIX.$sessId;
-        $sessionId = str_replace('\'', '\'\'', $sessionId);
 
         // Get lock on session. If the count of locks is "0" everything is fine
         // If the new value is exactly BREAK_AFTER then we also have the lock and have waited long enough for the
@@ -155,7 +159,7 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
             }
 
             // If we got the lock, update with our pid and reset lock and expiration
-            if ($locks <= 0 || $locks == $this->_breakAfter) {
+            if ($locks <= 0 || $locks === $this->_breakAfter) {
                 try {
                     //set lock
                     $this->_cassandra->queryAsync(
@@ -174,7 +178,8 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
                     if ($content === null) { //new session
                         $content = '';
                     }
-                    return $this->_decodeData($content);
+                    $this->_content = $this->_decodeData($content);
+                    return $this->_content;
                 } catch (\Cassandra\Exception $e) {
                     $this->_log("querying session data failed: {$e->getMessage()} ({$e->getCode()})");
                     Mage::logException($e);
@@ -205,10 +210,8 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
         }
 
         $sessionId = self::SESSION_PREFIX.$sessId;
-        $sessionId = str_replace('\'', '\'\'', $sessionId);
-        $sessionData = str_replace('\'', '\'\'', $sessData);
 
-        $sessionData = $this->_encodeData($sessionData);
+        $sessionData = $this->_encodeData($sessData);
 
         // If we lost our lock on the session we should not overwrite it.
         // It should always exist since the read callback created it.
@@ -273,14 +276,27 @@ class Tobihille_CassandraSession_Model_Session extends Mage_Core_Model_Mysql4_Se
 
     public function _decodeData(String $data) : string
     {
-        $uncompressedData = gzuncompress($data);
+        if (!$this->_compress) {
+            return $data;
+        }
+
+        $uncompressedData = '';
+        if ($data !== '') {
+            $uncompressedData = gzuncompress($data);
+        }
+
         if ($uncompressedData !== false) {
             return $uncompressedData;
         }
-        return $data;
+        return $data; //in case of decompression error (e.g. change from uncompressed to compressed)
     }
 
-    public function _encodeData(String $data) {
+    public function _encodeData(String $data) : string
+    {
+        if (!$this->_compress) {
+            return $data;
+        }
+
         $compressedData = gzcompress($data, 9);
         if ($compressedData !== false) {
             return $compressedData;
